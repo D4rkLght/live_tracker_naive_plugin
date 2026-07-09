@@ -41,6 +41,9 @@ func (h Handler) ServeHTTP(
 		log.Println("Proto:", r.Proto)
 		log.Println("RequestURI:", r.RequestURI)
 		log.Println("URL:", r.URL.String())
+		log.Println("Forwarded:", r.Header.Get("X-Forwarded-For"))
+		log.Printf("Headers: %+v", r.Header)
+		log.Printf("Context: %+v", r.Context())
 
 		for k, v := range r.Header {
 			log.Printf("Header %s: %v\n", k, v)
@@ -52,6 +55,9 @@ func (h Handler) ServeHTTP(
 		}
 
 		ip := r.RemoteAddr
+		repl := r.Context().Value(caddy.ReplacerCtxKey).(*caddy.Replacer)
+		log.Println("Caddy remote:", repl.ReplaceAll("{http.request.remote}", ""))
+		log.Println("Caddy host:", repl.ReplaceAll("{http.request.remote.host}", ""))
 		host := r.Host
 
 		id := uuid.New().String()
