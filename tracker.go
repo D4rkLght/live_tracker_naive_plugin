@@ -1,6 +1,7 @@
 package connectiontracker
 
 import (
+	"log"
 	"encoding/base64"
 	"strings"
 	"net/http"
@@ -33,6 +34,22 @@ func (h Handler) ServeHTTP(
 ) error {
 
 	if r.Method == http.MethodConnect {
+		log.Println("=== REQUEST ===")
+		log.Println("RemoteAddr:", r.RemoteAddr)
+		log.Println("Host:", r.Host)
+		log.Println("Method:", r.Method)
+		log.Println("Proto:", r.Proto)
+		log.Println("RequestURI:", r.RequestURI)
+		log.Println("URL:", r.URL.String())
+
+		for k, v := range r.Header {
+			log.Printf("Header %s: %v\n", k, v)
+		}
+
+		if r.TLS != nil {
+			log.Println("TLS ServerName:", r.TLS.ServerName)
+			log.Println("TLS Version:", r.TLS.Version)
+		}
 
 		ip := r.RemoteAddr
 		host := r.Host
