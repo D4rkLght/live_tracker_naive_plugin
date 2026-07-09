@@ -1,4 +1,4 @@
-module github.com/yourname/caddy-tracker
+module github.com/D4rkLght/live_tracker_naive_plugin
 
 go 1.26.5
 
