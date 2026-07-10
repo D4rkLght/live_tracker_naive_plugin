@@ -1,7 +1,6 @@
 package connectiontracker
 
 import (
-	"log"
 	"encoding/base64"
 	"strings"
 	"net/http"
@@ -33,56 +32,43 @@ func (h Handler) ServeHTTP(
 	next caddyhttp.Handler,
 ) error {
 
-	if r.Method == http.MethodConnect {
-		log.Println("=== REQUEST ===")
-		log.Println("RemoteAddr:", r.RemoteAddr)
-		log.Println("Host:", r.Host)
-		log.Println("Method:", r.Method)
-		log.Println("Proto:", r.Proto)
-		log.Println("RequestURI:", r.RequestURI)
-		log.Println("URL:", r.URL.String())
-		log.Println("Forwarded:", r.Header.Get("X-Forwarded-For"))
-		log.Printf("Headers: %+v", r.Header)
-		log.Printf("Context: %+v", r.Context())
+	if r.Method != http.MethodConnect {
+		return next.ServeHTTP(w, r)
+	}
 
-		for k, v := range r.Header {
-			log.Printf("Header %s: %v\n", k, v)
-		}
+	username := getUsername(r)
 
-		if r.TLS != nil {
-			log.Println("TLS ServerName:", r.TLS.ServerName)
-			log.Println("TLS Version:", r.TLS.Version)
-		}
+	id := uuid.New().String()
 
-		ip := r.RemoteAddr
-		repl := r.Context().Value(caddy.ReplacerCtxKey).(*caddy.Replacer)
-		log.Println("Caddy remote:", repl.ReplaceAll("{http.request.remote}", ""))
-		log.Println("Caddy host:", repl.ReplaceAll("{http.request.remote.host}", ""))
-		host := r.Host
+	conn := &UserConnection{
+		Host:    r.Host,
+		Started: time.Now(),
+	}
 
-		id := uuid.New().String()
+	// проверяем лимит и добавляем подключение
+	ok := storage.AddConnection(
+		username,
+		id,
+		conn,
+	)
 
-		conn := &UserConnection{
-			IP:      ip,
-			Host:    host,
-			Started: time.Now(),
-		}
-
-		username := getUsername(r)
-
-		storage.AddConnection(
-			username,
-			id,
-			conn,
+	if !ok {
+		http.Error(
+			w,
+			"Too many active connections",
+			http.StatusTooManyRequests,
 		)
 
-		defer func() {
-			storage.RemoveConnection(
-				username,
-				id,
-			)
-		}()
+		return nil
 	}
+
+	// удаляем подключение после закрытия CONNECT
+	defer func() {
+		storage.RemoveConnection(
+			username,
+			id,
+		)
+	}()
 
 	return next.ServeHTTP(w, r)
 }

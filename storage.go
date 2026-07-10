@@ -2,6 +2,7 @@ package connectiontracker
 
 import "sync"
 
+
 type Storage struct {
 	mu      sync.RWMutex
 	Tracker *Tracker
@@ -16,7 +17,7 @@ func NewStorage() *Storage {
 }
 
 
-func (s *Storage) AddConnection(username string, connID string, conn *UserConnection) {
+func (s *Storage) AddConnection(username string, connID string, conn *UserConnection) bool {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -25,15 +26,25 @@ func (s *Storage) AddConnection(username string, connID string, conn *UserConnec
 
 	if !exists {
 		user = &User{
+			Active:      0,
+			RejectedAttempts:      0,
 			Connections: make(map[string]*UserConnection),
 		}
 
 		s.Tracker.Users[username] = user
 	}
 
-	user.Connections[connID] = conn
-}
+	// проверяем лимит
+	if user.Active >= 3 {
+		user.RejectedAttempts++
+		return false
+	}
 
+	user.Connections[connID] = conn
+	user.Active++
+
+	return true
+}
 
 func (s *Storage) RemoveConnection(username string, id string) {
 
@@ -46,14 +57,20 @@ func (s *Storage) RemoveConnection(username string, id string) {
 		return
 	}
 
+	_, exists = user.Connections[id]
+
+	if !exists {
+		return
+	}
 
 	delete(user.Connections, id)
 
+	if user.Active > 0 {
+		user.Active--
+	}
 
-	// если у пользователя больше нет соединений,
-	// можно удалить его из списка
-
-	if len(user.Connections) == 0 {
+	// если больше нет соединений - удаляем пользователя
+	if user.Active == 0 {
 		delete(s.Tracker.Users, username)
 	}
 }
@@ -69,6 +86,8 @@ func (s *Storage) ListUsers() map[string]*User {
 	for username, user := range s.Tracker.Users {
 
 		copyUser := &User{
+			Active:      user.Active,
+			RejectedAttempts:      user.RejectedAttempts,
 			Connections: make(map[string]*UserConnection),
 		}
 

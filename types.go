@@ -3,15 +3,16 @@ package connectiontracker
 import "time"
 
 type UserConnection struct {
-    IP      string    `json:"ip"`
     Started time.Time `json:"started"`
     Host    string    `json:"host,omitempty"`
 }
 
 type User struct {
-    Connections map[string]*UserConnection `json:"connections"`
+    Active      int                           `json:"active"`
+    RejectedAttempts  int                           `json:"rejected_attempts"`
+    Connections map[string]*UserConnection   `json:"connections"`
 }
 
 type Tracker struct {
-	Users map[string]*User
+    Users map[string]*User `json:"users"`
 }
