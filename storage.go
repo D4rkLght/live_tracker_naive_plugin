@@ -35,10 +35,10 @@ func (s *Storage) AddConnection(username string, connID string, conn *UserConnec
 	}
 
 	// проверяем лимит
-	if user.Active >= 3 {
-		user.RejectedAttempts++
-		return false
-	}
+	// if user.Active >= 3 {
+	// 	user.RejectedAttempts++
+	// 	return false
+	// }
 
 	user.Connections[connID] = conn
 	user.Active++
